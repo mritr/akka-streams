@@ -17,9 +17,10 @@ object QuickStart extends App {
 
   def factorialExample(source: Source[Int, NotUsed]): Future[IOResult] = {
     val factorials = source.scan(BigInt(1))((acc, next) => acc * next)
-    factorials
-      .map(num => ByteString(s"$num\n"))
-      .runWith(FileIO.toPath(Paths.get("factorials.txt")))
+    factorials.map(_.toString).runWith(lineSink("factorial2.txt"))
+    //factorials
+    //  .map(num => ByteString(s"$num\n"))
+    //  .runWith(FileIO.toPath(Paths.get("factorials.txt")))
   }
 
   def lineSink(filename: String): Sink[String, Future[IOResult]] =
