@@ -2,8 +2,9 @@ package com.mritr.akka.streams
 
 import akka.NotUsed
 import akka.actor.ActorSystem
-import akka.stream.{ActorMaterializer, ClosedShape, IOResult}
-import akka.stream.scaladsl.{Broadcast, Flow, GraphDSL, RunnableGraph, Sink, Source}
+import akka.stream.{ActorMaterializer, ClosedShape, IOResult, OverflowStrategy}
+import akka.stream.scaladsl.{Broadcast, Flow, GraphDSL, Keep, RunnableGraph, Sink, Source}
+import com.mritr.akka.streams.QuickStart.system
 
 import scala.concurrent.Future
 
@@ -57,4 +58,31 @@ object TweetMain extends App {
   })
   // This writes out the 2 files.
   g.run()
+
+  // Back pressure in action
+  /*
+  tweets
+    .buffer(10, OverflowStrategy.dropHead)
+    .map(x => {
+      Thread.sleep(1000)
+    })
+    .runWith(Sink.ignore)
+  */
+
+  val count: Flow[Tweet, Int, NotUsed] = Flow[Tweet].map(_ => 1)
+
+  val sumSink: Sink[Int, Future[Int]] = Sink.fold[Int, Int](0)(_ + _)
+
+  val counterGraph: RunnableGraph[Future[Int]] =
+    tweets
+      .via(count)
+      .toMat(sumSink)(Keep.right)
+
+  val sum: Future[Int] = counterGraph.run()
+
+  implicit val ec = system.dispatcher
+  sum.foreach(c => println(s"Total tweets processed: $c"))
+
+  // Or one liner
+  //val sum: Future[Int] = tweets.map(t => 1).runWith(sumSink)
 }
