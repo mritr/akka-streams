@@ -2,7 +2,7 @@ package com.mritr.akka.streams
 
 import akka.NotUsed
 import akka.actor.ActorSystem
-import akka.stream.{ActorMaterializer, ClosedShape}
+import akka.stream.{ActorMaterializer, ClosedShape, UniformFanInShape}
 import akka.stream.scaladsl._
 
 import scala.collection.immutable
@@ -94,5 +94,36 @@ object Graphs extends App {
   val matList: Seq[Future[String]] = dynamicTask.run()
   matList.map(x => x.onComplete(f => println(f)))
 
-  
+  // Partial graphs
+  val pickMaxOfThree = GraphDSL.create() { implicit b =>
+    import GraphDSL.Implicits._
+
+    // zip1 takes 2 ints and outputs an int.
+    val zip1 = b.add(ZipWith[Int,Int,Int](math.max _))
+    // zip2 takes result of zip1 and int and outputs an int.
+    val zip2 = b.add(ZipWith[Int,Int,Int](math.max _))
+    zip1.out ~> zip2.in0
+
+    UniformFanInShape(zip2.out, zip1.in0, zip1.in1, zip2.in1)
+  }
+
+  val resultSink = Sink.head[Int]
+
+  val partialConstruction = RunnableGraph.fromGraph(GraphDSL.create(resultSink) { implicit b => sink =>
+    import GraphDSL.Implicits._
+
+    // Importing the partial graph will return its shape (inlets & outlets)
+    val pm3 = b.add(pickMaxOfThree)
+
+    Source.single(1) ~> pm3.in(0)
+    Source.single(2) ~> pm3.in(1)
+    Source.single(3) ~> pm3.in(2)
+    pm3.out ~> sink.in
+    ClosedShape
+  })
+
+  val max: Future[Int] = partialConstruction.run()
+  max.onComplete(x => println(x))
+
+
 }
