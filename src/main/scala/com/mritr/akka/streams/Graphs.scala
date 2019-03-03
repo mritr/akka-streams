@@ -5,6 +5,9 @@ import akka.actor.ActorSystem
 import akka.stream.{ActorMaterializer, ClosedShape}
 import akka.stream.scaladsl._
 
+import scala.collection.immutable
+import scala.concurrent.Future
+
 // https://doc.akka.io/docs/akka/2.5/stream/stream-graphs.html
 object Graphs extends App {
 
@@ -70,6 +73,26 @@ object Graphs extends App {
     ClosedShape
   })
 
-  scratchTask.run()
+  //scratchTask.run()
 
+  // Could be useful...
+  val sinks = immutable.Seq("a", "b", "c").map(prefix =>
+    Flow[String].filter(str => str.startsWith(prefix)).toMat(Sink.head[String])(Keep.right)
+  )
+
+  val dynamicTask: RunnableGraph[Seq[Future[String]]] = RunnableGraph.fromGraph(GraphDSL.create(sinks) { implicit b => sinkList =>
+    import GraphDSL.Implicits._
+
+    val broadcast = b.add(Broadcast[String](sinkList.size))
+
+    Source(List("ax", "bx", "cx")) ~> broadcast
+    sinkList.foreach(sink => broadcast ~> sink)
+
+    ClosedShape
+  })
+
+  val matList: Seq[Future[String]] = dynamicTask.run()
+  matList.map(x => x.onComplete(f => println(f)))
+
+  
 }
