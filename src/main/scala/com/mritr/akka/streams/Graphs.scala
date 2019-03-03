@@ -2,7 +2,7 @@ package com.mritr.akka.streams
 
 import akka.NotUsed
 import akka.actor.ActorSystem
-import akka.stream.{ActorMaterializer, ClosedShape, UniformFanInShape}
+import akka.stream.{ActorMaterializer, ClosedShape, SourceShape, UniformFanInShape}
 import akka.stream.scaladsl._
 
 import scala.collection.immutable
@@ -125,5 +125,23 @@ object Graphs extends App {
   val max: Future[Int] = partialConstruction.run()
   max.onComplete(x => println(x))
 
+  // constructing sources, sinks and flows from partial graphs.
+  val pairs = Source.fromGraph(GraphDSL.create() { implicit b =>
+    import GraphDSL.Implicits._
 
+    val zip = b.add(Zip[Int, Int]())
+    def ints = Source.fromIterator(() => Iterator.from(1))
+
+    // takes odds
+    ints.filter(_ % 2 != 0) ~> zip.in0
+    // takes evens
+    ints.filter(_ % 2 == 0) ~> zip.in1
+
+    SourceShape(zip.out)
+  })
+
+  val firstPair: Future[(Int, Int)] = pairs.runWith(Sink.head)
+
+  // Expect this to be (1,2)
+  firstPair.onComplete(x => println(x))
 }
