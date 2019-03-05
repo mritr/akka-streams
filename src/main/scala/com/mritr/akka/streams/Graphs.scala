@@ -77,7 +77,7 @@ object Graphs extends App {
   //scratchTask.run()
 
   // Could be useful...
-  val sinks = immutable.Seq("a", "b", "c").map(prefix =>
+  val sinks: immutable.Seq[Sink[String, Future[String]]] = immutable.Seq("a", "b", "c").map(prefix =>
     Flow[String].filter(str => str.startsWith(prefix)).toMat(Sink.head[String])(Keep.right)
   )
 
