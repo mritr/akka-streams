@@ -2,9 +2,9 @@ package com.mritr.akka.streams
 
 import akka.NotUsed
 import akka.actor.{ActorSystem, Cancellable}
-import akka.stream.{ActorMaterializer, Attributes, ClosedShape}
+import akka.stream._
 import akka.stream.alpakka.sqs.{MessageAction, SqsSourceSettings}
-import akka.stream.alpakka.sqs.scaladsl.SqsSource
+import akka.stream.alpakka.sqs.scaladsl._
 import akka.stream.scaladsl._
 import com.amazonaws.client.builder.AwsClientBuilder.EndpointConfiguration
 import com.amazonaws.services.sqs.model.Message
@@ -49,6 +49,7 @@ object SourceToASource extends App {
   queueSource.runForeach(println)
 
   // Construct sqs sources
+  // Thinking need to bind SqsAckSink(queueUrl) here.
   val sqsSources: Source[Message, Cancellable] = queueSource.map(queueUrl => SqsSource(queueUrl, SqsSourceSettings().withCloseOnEmptyReceive(false).withWaitTime(1.second))).flatMapConcat(identity)
 
   val workToDo: Flow[Message, MessageAction, NotUsed] = Flow[Message].map(msg => {
