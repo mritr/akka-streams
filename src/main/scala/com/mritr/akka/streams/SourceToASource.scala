@@ -1,17 +1,16 @@
 package com.mritr.akka.streams
 
 import akka.NotUsed
-import akka.actor.{ActorSystem, Cancellable}
+import akka.actor.ActorSystem
 import akka.stream._
-import akka.stream.alpakka.sqs.{MessageAction, SqsSourceSettings}
-import akka.stream.alpakka.sqs.scaladsl._
+import akka.stream.alpakka.sqs.newdsl.{MessageAction, MessageRequest, SqsAckSink, SqsGetFlow}
 import akka.stream.scaladsl._
-import com.amazonaws.client.builder.AwsClientBuilder.EndpointConfiguration
-import com.amazonaws.services.sqs.model.Message
-import com.amazonaws.services.sqs.{AmazonSQSAsync, AmazonSQSAsyncClientBuilder}
+import software.amazon.awssdk.services.sqs.SqsAsyncClient
 
 import concurrent.duration._
 import scala.util.Random
+
+import com.mritr.akka.streams._
 
 object SourceToASource extends App {
 
@@ -22,11 +21,8 @@ object SourceToASource extends App {
   val sqsEndpoint = "http://localhost:4100"
   val sqsRegion = "us-east-1"
 
-  implicit val awsSqsClient: AmazonSQSAsync = AmazonSQSAsyncClientBuilder
-    .standard()
-    .withEndpointConfiguration(new EndpointConfiguration(
-      sqsEndpoint, sqsRegion
-    )).build()
+
+  implicit val awsSqsClientU: SqsAsyncClient = ???
 
   // Initial source refreshes every n minutes to get list of applicable queues.
 
@@ -44,30 +40,20 @@ object SourceToASource extends App {
     )
   }
 
-  val queueSource: Source[String, Cancellable] = Source.tick(1.second, 30.second, NotUsed).map(_ => getQueuesStub()).mapConcat(identity)
-  // This refreshes every 30 seconds
-  queueSource.runForeach(println)
 
-  // Construct sqs sources
-  // Thinking need to bind SqsAckSink(queueUrl) here.
-  val sqsSources: Source[Message, Cancellable] = queueSource.map(queueUrl => SqsSource(queueUrl, SqsSourceSettings().withCloseOnEmptyReceive(false).withWaitTime(1.second))).flatMapConcat(identity)
+  val workerLoop =
+    Source.tick(1.second, 30.second, NotUsed)
+    .map(_ => getQueuesStub()).mapConcat(identity)
+    .map(MessageRequest.Get(_, 10))
+    .mapZipVia(SqsGetFlow(4))
+    // will this provide backpressure to the top
+    .map{ case (queueUrl, msg) =>
+      println(s"Got message $msg")
+      Thread.sleep(5000)
+      println(s"Done working on $msg")
+      MessageAction.Delete(msg, queueUrl.queueUrl)
+    }
+    .runWith(SqsAckSink(50))
 
-  val workToDo: Flow[Message, MessageAction, NotUsed] = Flow[Message].map(msg => {
-    println(s"Got message $msg")
-    Thread.sleep(5000)
-    println(s"Done working on $msg")
-    msg
-  }).map(msg => MessageAction.Delete(msg)).async
-    .addAttributes(Attributes.inputBuffer(1, 4))
-
-  val runnableGraph = RunnableGraph.fromGraph(GraphDSL.create() { implicit builder: GraphDSL.Builder[NotUsed] =>
-    import GraphDSL.Implicits._
-
-    // Need to link corresponding Sink
-    sqsSources ~> workToDo ~> Sink.ignore
-
-    ClosedShape
-  })
-
-  runnableGraph.run()
 }
+
