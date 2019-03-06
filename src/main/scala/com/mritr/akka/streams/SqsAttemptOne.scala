@@ -1,3 +1,4 @@
+/*
 package com.mritr.akka.streams
 
 import akka.Done
@@ -97,3 +98,4 @@ object SqsAttemptOne extends App {
   // Just forcefully kill this will not stop due to the closeOnEmptyReceive value.
 
 }
+*/

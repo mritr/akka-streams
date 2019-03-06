@@ -3,7 +3,7 @@ package akka.stream.alpakka.sqs.newdsl
 import akka.NotUsed
 import akka.stream.scaladsl.{Flow}
 import software.amazon.awssdk.services.sqs.SqsAsyncClient
-import software.amazon.awssdk.services.sqs.model.{DeleteMessageRequest}
+import software.amazon.awssdk.services.sqs.model.DeleteMessageRequest
 
 import scala.compat.java8.FutureConverters._
 
@@ -22,7 +22,7 @@ object SqsAckFlow {
           sqsAsyncClient.deleteMessage(
             DeleteMessageRequest.builder()
               .queueUrl(delete.queueUrl)
-              .receiptHandle(delete.message.getReceiptHandle)
+              .receiptHandle(delete.message.receiptHandle)
               .build()
           ).thenApply(f => ActionResult.Receipt(f.sdkHttpResponse(), f.responseMetadata()))
           .toScala
@@ -36,7 +36,7 @@ object SqsAckFlow {
           sqsAsyncClient.deleteMessage(
             DeleteMessageRequest.builder()
               .queueUrl(delete.queueUrl)
-              .receiptHandle(delete.message.getReceiptHandle)
+              .receiptHandle(delete.message.receiptHandle)
               .build()
           ).thenApply(_ => ActionResult.Ignored)
            .toScala

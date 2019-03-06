@@ -1,16 +1,17 @@
 package com.mritr.akka.streams
 
+import java.net.URI
+
 import akka.NotUsed
 import akka.actor.ActorSystem
 import akka.stream._
 import akka.stream.alpakka.sqs.newdsl.{MessageAction, MessageRequest, SqsAckSink, SqsGetFlow}
 import akka.stream.scaladsl._
+import software.amazon.awssdk.regions.Region
 import software.amazon.awssdk.services.sqs.SqsAsyncClient
 
 import concurrent.duration._
 import scala.util.Random
-
-import com.mritr.akka.streams._
 
 object SourceToASource extends App {
 
@@ -22,7 +23,9 @@ object SourceToASource extends App {
   val sqsRegion = "us-east-1"
 
 
-  implicit val awsSqsClientU: SqsAsyncClient = ???
+  implicit val awsSqsClientU: SqsAsyncClient = SqsAsyncClient.builder()
+    .endpointOverride(new URI(sqsEndpoint))
+    .region(Region.US_EAST_1).build()
 
   // Initial source refreshes every n minutes to get list of applicable queues.
 
@@ -30,6 +33,7 @@ object SourceToASource extends App {
     *
     * @return
     */
+  /*
   def getQueuesStub(): List[String] = {
     List(
       s"development-queue-${Math.abs(Random.nextInt())}",
@@ -37,6 +41,17 @@ object SourceToASource extends App {
       s"development-queue-${Math.abs(Random.nextInt())}",
       s"development-queue-${Math.abs(Random.nextInt())}",
       s"development-queue-${Math.abs(Random.nextInt())}"
+    )
+  }
+  */
+
+  def getQueuesStub(): List[String] = {
+    List(
+      "development-queue-1",
+      "development-queue-2",
+      "development-queue-3",
+      "development-queue-4",
+      "development-queue-5"
     )
   }
 
