@@ -11,8 +11,6 @@ import com.amazonaws.services.sqs.model.Message
 import com.amazonaws.services.sqs.{AmazonSQSAsync, AmazonSQSAsyncClientBuilder}
 
 import concurrent.duration._
-import scala.collection.immutable
-import scala.concurrent.Future
 import scala.util.Random
 
 object SourceToASource extends App {
@@ -63,7 +61,6 @@ object SourceToASource extends App {
 
   val runnableGraph = RunnableGraph.fromGraph(GraphDSL.create() { implicit builder: GraphDSL.Builder[NotUsed] =>
     import GraphDSL.Implicits._
-
 
     // Need to link corresponding Sink
     sqsSources ~> workToDo ~> Sink.ignore
