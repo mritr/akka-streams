@@ -68,4 +68,5 @@ object SourceToASource extends App {
     ClosedShape
   })
 
+  runnableGraph.run()
 }
