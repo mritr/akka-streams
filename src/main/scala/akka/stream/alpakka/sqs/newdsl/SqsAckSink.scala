@@ -4,7 +4,7 @@ import akka.Done
 import akka.stream.scaladsl.{Keep, Sink}
 import software.amazon.awssdk.services.sqs.SqsAsyncClient
 
-import scala.concurrent.Future
+import scala.concurrent.{ExecutionContext, Future}
 
 
 /**
@@ -16,6 +16,6 @@ import scala.concurrent.Future
 
 object SqsAckSink {
   def apply(parallelism: Int)
-           (implicit sqsAsyncClient: SqsAsyncClient): Sink[MessageAction, Future[Done]] =
+           (implicit sqsAsyncClient: SqsAsyncClient, ec: ExecutionContext): Sink[Option[MessageAction], Future[Done]] =
     SqsAckFlow.ignored(parallelism).toMat(Sink.ignore)(Keep.right)
 }

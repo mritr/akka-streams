@@ -18,17 +18,19 @@ import concurrent.duration._
 case class SqsMessage(queueUrl: String, message: Message)
 
 object SqsGetFlow {
-  def apply(paralellism: Int)(implicit sqsAsyncClient: SqsAsyncClient): Flow[MessageRequest.Get, Message, NotUsed] =
+  def apply(paralellism: Int)(implicit sqsAsyncClient: SqsAsyncClient): Flow[MessageRequest.Get, Option[Message], NotUsed] =
     Flow[MessageRequest.Get].mapAsync(paralellism) { get =>
       sqsAsyncClient.receiveMessage(
         ReceiveMessageRequest.builder()
           .queueUrl(get.queueUrl)
           .maxNumberOfMessages(get.limit)
           .build()
-      ).thenApply[Iterator[Message]] { mr =>
-        mr.messages().iterator().asScala
+      ).thenApply[Option[Message]] { mr =>
+        if (!mr.messages().isEmpty) {
+          mr.messages().iterator().asScala.toList.headOption
+        } else None
       }.toScala
-    }.flatMapConcat(f => Source.fromIterator(() => f))
+    }
 }
 
 object SqsSource {
