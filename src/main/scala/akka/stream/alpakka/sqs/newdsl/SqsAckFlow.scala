@@ -24,7 +24,7 @@ object SqsAckFlow {
               .queueUrl(delete.queueUrl)
               .receiptHandle(delete.message.receiptHandle)
               .build()
-          ).thenApply(f => ActionResult.Receipt(f.sdkHttpResponse(), f.responseMetadata()))
+          ).thenApply[ActionResult](f => ActionResult.Receipt(f.sdkHttpResponse(), f.responseMetadata()))
           .toScala
       }
 
@@ -38,7 +38,7 @@ object SqsAckFlow {
               .queueUrl(delete.queueUrl)
               .receiptHandle(delete.message.receiptHandle)
               .build()
-          ).thenApply(_ => ActionResult.Ignored)
+          ).thenApply[ActionResult](_ => ActionResult.Ignored)
            .toScala
       }
 }
