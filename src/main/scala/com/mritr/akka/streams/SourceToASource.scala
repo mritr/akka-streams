@@ -1,7 +1,5 @@
 package com.mritr.akka.streams
 
-import java.net.URI
-
 import akka.NotUsed
 import akka.actor.ActorSystem
 import akka.stream._
@@ -12,7 +10,6 @@ import software.amazon.awssdk.regions.Region
 import software.amazon.awssdk.services.sqs.SqsAsyncClient
 
 import concurrent.duration._
-import scala.util.Random
 
 object SourceToASource extends App {
 
@@ -47,29 +44,21 @@ object SourceToASource extends App {
   */
 
   def getQueuesStub(): List[String] = {
+    println("getting queues")
     List(
-      "http://localhost/development-queue-1",
-      "http://localhost/development-queue-2",
-      "http://localhost/development-queue-3",
-      "http://localhost/development-queue-4",
-      "http://localhost/development-queue-5"
     )
   }
-
 
   val workerLoop =
     Source.tick(0.second, 5.second, NotUsed)
     .map(_ => getQueuesStub()).mapConcat(identity)
-    .map(MessageRequest.Get(_, 1))
-    .mapZipVia(SqsGetFlow(4))
-    // will this provide backpressure to the top
-    .map{ case (queueUrl, msg) =>
-      if (msg.nonEmpty) {
-        println(s"Got message $msg")
+    .map(MessageRequest.Get(_, 10))
+    .via(SqsGetFlow(4))
+    .map{ case (msgWithRequest) =>
+        println(s"Got message ${msgWithRequest.message}")
         Thread.sleep(5000)
-        println(s"Done working on $msg")
-        Some(MessageAction.Delete(msg.get, queueUrl.queueUrl))
-      } else None
+        println(s"Done working on ${msgWithRequest.message}")
+        MessageAction.Delete(msgWithRequest.message, msgWithRequest.messageRequest.queueUrl)
     }.runWith(SqsAckSink(50))
 
 }

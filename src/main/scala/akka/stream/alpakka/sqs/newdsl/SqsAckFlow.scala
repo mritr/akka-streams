@@ -30,20 +30,16 @@ object SqsAckFlow {
       }
 
   def ignored(parallelism: Int)
-           (implicit sqsAsyncClient: SqsAsyncClient, ec: ExecutionContext): Flow[Option[MessageAction], ActionResult, NotUsed] =
-    Flow[Option[MessageAction]]
+           (implicit sqsAsyncClient: SqsAsyncClient): Flow[MessageAction, ActionResult, NotUsed] =
+    Flow[MessageAction]
       .mapAsyncUnordered(parallelism) {
-            case delete: Option[MessageAction.Delete] =>
-              if (delete.nonEmpty) {
-                sqsAsyncClient.deleteMessage(
-                  DeleteMessageRequest.builder()
-                    .queueUrl(delete.get.queueUrl)
-                    .receiptHandle(delete.get.message.receiptHandle)
+            case delete: MessageAction.Delete =>
+              sqsAsyncClient.deleteMessage(
+                DeleteMessageRequest.builder()
+                    .queueUrl(delete.queueUrl)
+                    .receiptHandle(delete.message.receiptHandle)
                     .build()
                 ).thenApply[ActionResult](_ => ActionResult.Ignored)
                   .toScala
-              } else {
-                Future { ActionResult.Ignored }
-              }
           }
 }

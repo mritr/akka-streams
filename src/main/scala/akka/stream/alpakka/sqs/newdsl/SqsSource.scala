@@ -16,21 +16,27 @@ import concurrent.duration._
   * Package: akka.stream.alpakka.sqs.newdsl
   */
 case class SqsMessage(queueUrl: String, message: Message)
+case class MessageWithRequest(messageRequest: MessageRequest.Get, message: Message)
 
 object SqsGetFlow {
-  def apply(paralellism: Int)(implicit sqsAsyncClient: SqsAsyncClient): Flow[MessageRequest.Get, Option[Message], NotUsed] =
+  def apply(paralellism: Int)(implicit sqsAsyncClient: SqsAsyncClient): Flow[MessageRequest.Get, MessageWithRequest, NotUsed] =
     Flow[MessageRequest.Get].mapAsync(paralellism) { get =>
+      println("flowing")
       sqsAsyncClient.receiveMessage(
         ReceiveMessageRequest.builder()
           .queueUrl(get.queueUrl)
           .maxNumberOfMessages(get.limit)
           .build()
-      ).thenApply[Option[Message]] { mr =>
+      ).thenApply[List[MessageWithRequest]] { mr =>
         if (!mr.messages().isEmpty) {
-          mr.messages().iterator().asScala.toList.headOption
-        } else None
+          mr.messages().iterator().asScala.toList.map(MessageWithRequest(get, _))
+        } else {
+          List.empty[MessageWithRequest]
+        }
       }.toScala
-    }
+    }.flatMapConcat(f => {
+      if (f.nonEmpty) Source(f) else Source(List[MessageWithRequest]())
+    })
 }
 
 object SqsSource {

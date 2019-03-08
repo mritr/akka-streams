@@ -16,6 +16,6 @@ import scala.concurrent.{ExecutionContext, Future}
 
 object SqsAckSink {
   def apply(parallelism: Int)
-           (implicit sqsAsyncClient: SqsAsyncClient, ec: ExecutionContext): Sink[Option[MessageAction], Future[Done]] =
+           (implicit sqsAsyncClient: SqsAsyncClient): Sink[MessageAction, Future[Done]] =
     SqsAckFlow.ignored(parallelism).toMat(Sink.ignore)(Keep.right)
 }
